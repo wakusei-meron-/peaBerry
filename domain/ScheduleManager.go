@@ -3,9 +3,12 @@ package domain
 import (
 	//"peaberry/repo"
 	"peaberry/domain/entity"
-	"peaberry/util"
+	"peaberry/adaptor/mac"
 	"time"
+	"fmt"
 )
+
+const NOTFICATION_TITLE  = "予定が変更されました！"
 
 type NotificationSchedules []entity.Schedule
 
@@ -24,10 +27,12 @@ func StartApplication() {
 	latestSchedules = append(latestSchedules, s)
 
 	// 通知予定のスケジュールと比較
-	newSchedule := notificationSchedules.diff(latestSchedules)
-	util.PrettyPrint(newSchedule)
+	newSchedules, deletedSchedules := notificationSchedules.diff(latestSchedules)
 
-	remindSchedule(latestSchedules)
+	notificationMsg := formatMessage(newSchedules, deletedSchedules)
+	mac.Notify(NOTFICATION_TITLE, notificationMsg)
+
+	//remindSchedule(latestSchedules)
 }
 
 /**
@@ -45,34 +50,47 @@ func remindSchedule(schedules []entity.Schedule) {
 	//	util.PrettyPrint(duration)
 	//}
 
-	// Slack通知
 }
-
 /**
  * 通知予定と最新予定の比較
  */
- func (n *NotificationSchedules) diff(schedules []entity.Schedule) ([]entity.Schedule){
+ func (n *NotificationSchedules) diff(schedules []entity.Schedule) ([]entity.Schedule, []entity.Schedule){
  	newSchedules := []entity.Schedule{}
  	for _, s := range schedules {
- 		if !n.contains(s) {
+		if !contains(*n, s) {
 			newSchedules = append(newSchedules, s)
 		}
 	}
 
-	//deletedSchedules := []entity.Schedule{}
-	//for _, ns := range *n{
-	//	if s.conhhh
-	//}
-
-	return newSchedules
- }
-
- func (n *NotificationSchedules) contains(schedule entity.Schedule) bool {
- 	for _, ns := range *n{
- 		if ns == schedule {
- 			return true
+	deletedSchedules := []entity.Schedule{}
+	for _, ns := range *n{
+		if !contains(schedules, ns) {
+			deletedSchedules = append(deletedSchedules, ns)
 		}
 	}
 
+	return newSchedules, deletedSchedules
+ }
+
+ func contains(schedules []entity.Schedule, schedule entity.Schedule) bool {
+ 	for _, s := range schedules{
+ 		if s == schedule {
+ 			return true
+		}
+	}
 	return false
  }
+
+ /**
+  * 変更予定の文字列を生成します
+  */
+func formatMessage(newSchedules []entity.Schedule, deletedSchedules []entity.Schedule) string  {
+	var msg string
+	for _, s := range newSchedules{
+		msg += fmt.Sprintln("追加：", s.Title)
+	}
+	for _, s := range deletedSchedules{
+		msg += fmt.Sprintln("取消：", s.Title)
+	}
+	return msg
+}
