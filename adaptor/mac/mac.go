@@ -5,10 +5,15 @@ import (
 	"os/exec"
 )
 
-func Notify(title string, msg string) {
+func Notify(title string, msg string, soundFlag bool) {
+	args := []string{}
+	args = append(args, "-title", title)
+	args = append(args, "-message", msg)
+	if soundFlag {
+		args = append(args, "-sound", "default")
+	}
 	_, err := exec.Command("terminal-notifier",
-		"-title", title,
-		"-message", msg,
+		args...,
 	).Output()
 	if err != nil {
 		fmt.Println(err)

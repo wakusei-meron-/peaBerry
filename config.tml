@@ -1,0 +1,5 @@
+[notification]
+updated_title = "📮予定が変更されました！"
+prefix_new_schedule = "追加："
+prefix_deleted_schedule = "取消："
+sound = true
