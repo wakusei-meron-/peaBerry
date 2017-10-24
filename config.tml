@@ -2,4 +2,12 @@
 updated_title = "📮予定が変更されました！"
 prefix_new_schedule = "追加："
 prefix_deleted_schedule = "取消："
+
+# 予定の◯分前に通知
+minutes_before = 5
+
+# for mac
 sound = true
+
+
+

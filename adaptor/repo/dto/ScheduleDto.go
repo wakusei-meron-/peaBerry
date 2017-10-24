@@ -34,6 +34,8 @@ func (d *TimeDto) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	d.Time = t
+	duration, _ := time.ParseDuration("-9h")
+	jst := time.FixedZone("Asia/Tokyo", 9*60*60)
+	d.Time = t.Add(duration).In(jst)
 	return nil
 }
