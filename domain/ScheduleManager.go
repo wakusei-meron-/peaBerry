@@ -1,14 +1,18 @@
 package domain
 
 import (
-	"github.com/robfig/cron"
 	"peaberry/domain/entity"
 	"peaberry/config"
+	"peaberry/adaptor/repo/schedule"
 	"time"
 	"fmt"
 	"peaberry/util"
+	"go.uber.org/zap"
+	"github.com/robfig/cron"
 	"math"
 )
+
+var notiConf = config.GetInstance().Notification
 
 type ScheduleManager struct {
 	NotiSchedules []entity.Schedule
@@ -17,7 +21,8 @@ type ScheduleManager struct {
 var schedMgr = newInstance()
 
 func newInstance() *ScheduleManager {
-	s := []entity.Schedule{}
+	s := schedule.FetchTodaySchedule()
+	util.PrettyPrint(zap.Reflect("init schedule", s))
 	sm := ScheduleManager{s}
 	return &sm
 }
@@ -26,47 +31,49 @@ func GetInstance() *ScheduleManager {
 	return schedMgr
 }
 
-var notiConf = config.GetInstance().Notification
+func (sm *ScheduleManager) StartApplication() {
+	c := cron.New()
+	c.AddFunc(fmt.Sprintf("@every %s", notiConf.Interval), sm.scheduleHandler)
 
-func StartApplication() {
-	//latestSchedules := repo.FetchTodaySchedule()
-	//util.PrettyPrint(latestSchedules)
-	// 最新のスケジュールの取得
-	latestSchedules := []entity.Schedule{}
-	jst := time.FixedZone("Asia/Tokyo", 9*60*60)
-	duration, _ := time.ParseDuration("-9h")
-	start, _ := time.Parse("2006-01-02T15:04:05", "2017-10-24T00:55:00")
-	s := entity.Schedule{
-		Title: "title1",
-		Start: start.Add(duration).In(jst),
-		End:   time.Now(),
+	c.Start()
+
+	for {
+		time.Sleep(math.MaxInt64)
+		fmt.Println("sleep")
 	}
-	latestSchedules = append(latestSchedules, s)
+}
+
+func (sm *ScheduleManager) scheduleHandler() {
+	// 最新のスケジュールの取得
+	latestSchedules := schedule.FetchTodaySchedule()
+	//util.PrettyPrint(zap.Reflect("latest schedule", latestSchedules))
 
 	// 通知予定のスケジュールと比較
-	newSchedules, deletedSchedules := schedMgr.diff(latestSchedules)
+	newSchedules, deletedSchedules := sm.diff(latestSchedules)
 
 	// 予定変更の通知
-	notiMsg := formatUpdateMessage(newSchedules, deletedSchedules)
-	noti := entity.Notification{notiConf.UpdatedTitle, notiMsg}
-	noti.Fire()
+	if len(newSchedules) > 0 || len(deletedSchedules) > 0 {
+		notiMsg := formatUpdateMessage(newSchedules, deletedSchedules)
+		noti := entity.Notification{notiConf.UpdatedTitle, notiMsg}
+		noti.Fire()
+	}
 
 	// 予定変更の反映
-	schedMgr.add(newSchedules)
-	schedMgr.delete(deletedSchedules)
+	sm.add(newSchedules)
+	sm.delete(deletedSchedules)
 
 	// 通知予定のものがあるかチェック
-	inTimeSchedule := schedMgr.check()
+	inTimeSchedule := sm.check()
 	if len(inTimeSchedule) > 0 {
-		remind(inTimeSchedule)
-		schedMgr.done(inTimeSchedule)
+		sm.remind(inTimeSchedule)
+		sm.done(inTimeSchedule)
 	}
 }
 
 /**
  * 通知予定時間内の予定を通知
  */
-func remind(schedules []entity.Schedule) {
+func (_ *ScheduleManager) remind(schedules []entity.Schedule) {
 	dateFormat := "15:04"
 	var msg string
 	for _, s := range schedules {
@@ -78,7 +85,7 @@ func remind(schedules []entity.Schedule) {
 	}
 
 	n := entity.Notification{
-		"リマインド",
+		notiConf.RemindTitle,
 		msg,
 	}
 	n.Fire()
@@ -106,27 +113,6 @@ func (sm *ScheduleManager) check() []entity.Schedule {
 		}
 	}
 	return inTimeSchedule
-}
-
-/**
- * 通知予定の登録
- */
-func register(schdules []entity.Schedule) {
-
-	c := cron.New()
-	for _, s := range schdules {
-		c.AddFunc("@every 5s", func() {
-			util.PrettyPrint(s)
-		})
-	}
-
-	c.Start()
-	util.PrettyPrint(c.Entries())
-
-	for {
-		time.Sleep(math.MaxInt64)
-		fmt.Println("sleep")
-	}
 }
 
 /**
@@ -158,7 +144,7 @@ func (sm *ScheduleManager) delete(schedules []entity.Schedule) {
 	notiSchedules := []entity.Schedule{}
 	for _, s := range schedules {
 		for i, sms := range sm.NotiSchedules {
-			if s == sms {
+			if s.Id == sms.Id {
 				continue
 			}
 			sm.NotiSchedules = append(notiSchedules, sm.NotiSchedules[i])
@@ -180,7 +166,7 @@ func (sm *ScheduleManager) done(schedules []entity.Schedule) {
 
 func contains(schedules []entity.Schedule, schedule entity.Schedule) bool {
 	for _, s := range schedules {
-		if s == schedule {
+		if s.Id == schedule.Id {
 			return true
 		}
 	}

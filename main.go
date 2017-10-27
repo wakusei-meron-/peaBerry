@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-	domain.StartApplication()
+	schedMgr := domain.GetInstance()
+	schedMgr.StartApplication()
 }
-

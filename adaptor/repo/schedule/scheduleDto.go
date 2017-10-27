@@ -1,4 +1,4 @@
-package dto
+package schedule
 
 import (
 	"time"
@@ -20,11 +20,16 @@ type (
 	}
 
 	Schedule struct {
-		Title       string  `json:"title"`
-		AllDay      bool    `json:"allDay"`
-		Description string  `json:"description"`
-		Start       TimeDto `json:"start"`
-		End         TimeDto `json:"end"`
+		Title       string      `json:"title"`
+		AllDay      bool        `json:"allDay"`
+		Description string      `json:"description"`
+		Start       TimeDto     `json:"start"`
+		End         TimeDto     `json:"end"`
+		ScheduleKey ScheduleKey `json:"scheduleKey"`
+	}
+
+	ScheduleKey struct {
+		Code string `json:"code"`
 	}
 )
 

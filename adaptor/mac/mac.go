@@ -3,13 +3,16 @@ package mac
 import (
 	"fmt"
 	"os/exec"
+	"peaberry/config"
 )
 
-func Notify(title string, msg string, soundFlag bool) {
+var conf = config.GetInstance().Mac
+
+func Notify(title string, msg string) {
 	args := []string{}
 	args = append(args, "-title", title)
 	args = append(args, "-message", msg)
-	if soundFlag {
+	if conf.SoundFlag {
 		args = append(args, "-sound", "default")
 	}
 	_, err := exec.Command("terminal-notifier",

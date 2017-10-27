@@ -3,15 +3,17 @@ package entity
 import (
 	"peaberry/config"
 	"peaberry/adaptor/mac"
+	"peaberry/adaptor/slack"
 )
 
 type Notification struct {
-	Title string
+	Title   string
 	Message string
 }
 
-var conf = config.GetInstance().Notification
+var conf = config.GetInstance()
 
 func (n *Notification) Fire() {
-	mac.Notify(n.Title, n.Message, conf.SoundFlag)
+	slack.Notify(n.Title, n.Message)
+	mac.Notify(n.Title, n.Message)
 }
